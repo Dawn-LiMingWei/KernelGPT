@@ -1,0 +1,54 @@
+# 你是一名 Linux 内核安全分析专家。请根据以下崩溃报告和源码上下文，完成根因分析。
+
+## 崩溃描述
+{title}
+
+## 崩溃类型
+{crash_type}
+
+## 崩溃报告（精简）
+{report_summary}
+
+## 崩溃函数源码
+{crash_source_code}
+
+## 调用链关键函数
+{call_chain_code}
+
+## 相关结构体定义
+{struct_definitions}
+
+## 分析要求
+请按以下 JSON 格式输出诊断结果：
+
+```json
+{{
+  "root_cause": {{
+    "type": "根因类型，如 null-ptr-deref / use-after-free / race-condition / logic-error / ...",
+    "confidence": "高/中/低",
+    "summary": "一句话概括根因",
+    "detail": "详细描述根因触发机制，包括触发条件、代码路径和关键对象状态"
+  }},
+  "crash_location": {{
+    "function": "崩溃函数名",
+    "file": "文件路径",
+    "line": 0,
+    "code_snippet": "出错代码片段（3-5行）"
+  }},
+  "trigger_path": [
+    {{"step": 1, "function": "func_a", "description": "触发入口"}},
+    {{"step": 2, "function": "func_b", "description": "中间传播路径"}},
+    {{"step": 3, "function": "crash_func", "description": "在此处触发崩溃"}}
+  ],
+  "evidence": {{
+    "registers": "关键寄存器值及含义",
+    "memory": "相关内存状态分析",
+    "code_analysis": "源码层面的推理依据"
+  }},
+  "fix_suggestion": {{
+    "approach": "修复思路",
+    "code_hint": "伪代码或具体修改建议",
+    "difficulty": "简单/中等/复杂"
+  }}
+}}
+```

@@ -1,0 +1,7 @@
+# 诊断输出格式规范
+
+- 必须返回 JSON 对象，不包含额外前后缀文本。
+- 必填字段：root_cause, crash_location, trigger_path。
+- trigger_path 为数组，step 从 1 递增。
+- 所有字符串字段应给出具体分析，不要使用“未知/无法判断”作为默认值。
+- 如果证据不足，请在 confidence 中降低置信度并说明缺失点。
