@@ -200,6 +200,8 @@ def get_type_str(types_dict: dict):
     for type_name, type_def in types_dict.items():
         if type_name in ["PRIMITIVE", "UNFOUND", "EXISTING"]:
             continue
+        if not isinstance(type_def, str):
+            continue
         if SKIP_EXSITING:
             global existing_types
             if type_name in existing_types:

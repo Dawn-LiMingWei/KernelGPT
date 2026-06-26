@@ -15,3 +15,13 @@ starcoder-*/
 *.tmp
 tmp
 .cache
+image/
+.idea/
+crash-analysis/crash-samples/
+opencode/
+paper/
+spec-eval/debug/
+eval-output*/
+spec-output*/
+processed_*.json
+openai.key

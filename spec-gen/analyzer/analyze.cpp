@@ -163,6 +163,7 @@ public:
 };
 
 int main(int argc, const char **argv) {
+  const AnalyzerConfig config = load_analyzer_config(argv[0], "analyze");
   llvm::cl::OptionCategory MyToolCategory("my-tool options");
   llvm::cl::opt<std::string> OptCompileCommands(
       "p", llvm::cl::desc("Specify path compile_commands.json"),
@@ -195,7 +196,15 @@ int main(int argc, const char **argv) {
   std::vector<std::future<void>> futures;
   auto frontendAction = newFrontendActionFactory<StructAction>();
 
-  int maxThreads = 100;
+  const int maxThreads = config.resolved_max_threads();
+  std::cout << "[analyze] maxThreads=" << maxThreads;
+  if (config.env_loaded) {
+    std::cout << " from " << config.env_path;
+  }
+  if (config.limit_by_cpu) {
+    std::cout << " (cpu-limited)";
+  }
+  std::cout << std::endl;
   Semaphore sem(maxThreads);
   // Assuming 'sources' is a vector of strings containing source paths
   for (const auto &sourcePath : sources) {

@@ -92,6 +92,7 @@ public:
 };
 
 int main(int argc, const char **argv) {
+  const AnalyzerConfig config = load_analyzer_config(argv[0], "usage");
   llvm::cl::OptionCategory MyToolCategory("my-tool options");
   llvm::cl::opt<std::string> OptCompileCommands(
       "p", llvm::cl::desc("Specify path compile_commands.json"),
@@ -130,29 +131,50 @@ int main(int argc, const char **argv) {
             << std::endl;
 
   auto frontendAction = newFrontendActionFactory<StructAction>();
-  std::vector<std::future<void>> futures;
-  int maxThreads = 100;
-  Semaphore sem(maxThreads);
-  // Assuming 'sources' is a vector of strings containing source paths
-  for (const auto &sourcePath : sources) {
-    sem.wait(); // Wait for an available slot
-
-    // Capture necessary variables by reference
-    futures.push_back(
-        std::async(std::launch::async, [&sem, &sourcePath, &CompilationDatabase,
-                                        &frontendAction]() {
-          std::cout << sourcePath << std::endl;
-
-          // Processing logic with ClangTool
-          std::vector<std::string> currentSource = {sourcePath};
-          ClangTool tool(*CompilationDatabase, currentSource);
-          tool.run(frontendAction.get());
-
-          sem.notify(); // Signal that this thread is done
-        }));
+  const int maxThreads = config.resolved_max_threads();
+  const int batchSize = config.resolved_batch_size(maxThreads);
+  const int dedupCacheLimit = config.resolved_dedup_cache_max_entries();
+  set_output_decl_cache_limit(static_cast<std::size_t>(dedupCacheLimit));
+  std::cout << "[usage] maxThreads=" << maxThreads;
+  std::cout << " batchSize=" << batchSize;
+  std::cout << " dedupCacheMaxEntries=" << dedupCacheLimit;
+  if (config.env_loaded) {
+    std::cout << " from " << config.env_path;
   }
+  if (config.limit_by_cpu) {
+    std::cout << " (cpu-limited)";
+  }
+  std::cout << std::endl;
 
-  for (auto &fut : futures) {
-    fut.wait();
+  for (std::size_t batchStart = 0; batchStart < sources.size();
+       batchStart += static_cast<std::size_t>(batchSize)) {
+    const std::size_t batchEnd =
+        std::min(sources.size(),
+                 batchStart + static_cast<std::size_t>(batchSize));
+    std::vector<std::future<void>> futures;
+    futures.reserve(batchEnd - batchStart);
+    Semaphore sem(maxThreads);
+
+    for (std::size_t i = batchStart; i < batchEnd; ++i) {
+      sem.wait();
+      const std::string sourcePath = sources[i];
+      futures.push_back(
+          std::async(std::launch::async,
+                     [sourcePath, &sem, &CompilationDatabase, &frontendAction]() {
+                       std::cout << sourcePath << std::endl;
+                       std::vector<std::string> currentSource = {sourcePath};
+                       ClangTool tool(*CompilationDatabase, currentSource);
+                       tool.run(frontendAction.get());
+                       sem.notify();
+                     }));
+    }
+
+    for (auto &fut : futures) {
+      fut.wait();
+    }
+    clear_output_decl_cache();
+    std::cout << "[usage] completed batch " << (batchStart / batchSize + 1)
+              << ", processed " << batchEnd << "/" << sources.size()
+              << " files" << std::endl;
   }
 }

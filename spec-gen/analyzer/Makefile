@@ -15,10 +15,10 @@ OBJ_FILES=helper.o
 all: analyze usage
 
 analyze: analyze.cpp $(OBJ_FILES)
-	@clang++ $^ -o $@ -I$(LLVM_INCLUDE) $(LLVM_FLAGS) $(CLANG_LIBS) $(CXXFLAGS) 2>&1 | tee $(LOG_FILE)
+	@$(CXX) $^ -o $@ -I$(LLVM_INCLUDE) $(LLVM_FLAGS) $(CLANG_LIBS) $(CXXFLAGS) 2>&1 | tee $(LOG_FILE)
 
 usage: usage.cpp $(OBJ_FILES)
-	@clang++ $^ -o $@ -I$(LLVM_INCLUDE) $(LLVM_FLAGS) $(CLANG_LIBS) $(CXXFLAGS) 2>&1 | tee $(LOG_FILE)
+	@$(CXX) $^ -o $@ -I$(LLVM_INCLUDE) $(LLVM_FLAGS) $(CLANG_LIBS) $(CXXFLAGS) 2>&1 | tee $(LOG_FILE)
 
 # Compiling helper.cpp to an object file
 helper.o: helper.cpp helper.hpp

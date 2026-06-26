@@ -1,2 +1,7 @@
 prompt-output-*
 debug*
+.env
+
+# Generated data
+log-macro-no-header.txt
+missing.txt

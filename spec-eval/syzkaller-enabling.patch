@@ -10,3 +10,17 @@ index 3186fece5..53cdfa883 100644
  	}
  	log.Logf(0, "machine check:")
  	log.Logf(0, "%-24v: %v/%v", "syscalls", len(serv.targetEnabledSyscalls), len(serv.cfg.Target.Syscalls))
+diff --git a/sys/targets/targets.go b/sys/targets/targets.go
+index 66e4b16d2..aabbccdde 100644
+--- a/sys/targets/targets.go
++++ b/sys/targets/targets.go
+@@ -584,7 +584,8 @@ var (
+ 		"-O2",
+ 		"-pthread",
+ 		"-Wall",
+-		"-Werror",
++		"-Wno-error=implicit-function-declaration",
++		"-Wno-incompatible-pointer-types",
+ 		"-Wparentheses",
+ 		"-Wunused-const-variable",
+ 		"-Wframe-larger-than=16384", // executor uses stacks of limited size, so no jumbo frames

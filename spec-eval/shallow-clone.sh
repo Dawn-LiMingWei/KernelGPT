@@ -1,23 +1,27 @@
 #!/usr/bin/bash
+set -euo pipefail
+
 if [ "$#" -ne 2 ]; then
     echo "shallow-clone.sh src-dir dst-dir"
     exit 1
 fi
 
-if [ -d $2 ]; then
-    echo "$2 exists"
+src="$1"
+dst="$2"
+
+if [ -d "$dst" ]; then
+    echo "$dst exists"
     exit 1
 fi
 
-commit=$(cd $1 && git rev-parse HEAD)
-remote=$(cd $1 && git remote get-url origin)
-echo "Cloning $remote commit $commit into $2"
+commit=$(cd "$src" && git rev-parse HEAD)
+echo "Cloning local repo $src commit $commit into $dst"
 
-mkdir -p $2
-cd $2
+mkdir -p "$dst"
+cd "$dst"
 git init
-git remote add origin $remote
-git fetch --depth 1 origin $commit
+git remote add origin "$src"
+git fetch --depth 1 origin "$commit"
 git checkout FETCH_HEAD
 
 echo "Done"

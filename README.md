@@ -196,6 +196,9 @@ If you want to reuse our generated specifications for drivers (or sockets), you 
 ```bash
 # Under the directory `spec-gen`
 python eval_spec.py -u -s ../generated-specs/specs-6.7/correct-driver-spec --output-name debug -o eval-output --merge
+
+python3 eval_spec.py -u -s eval-output/correct-spec --output-name debug -o eval-output --merge -t 10
+
 ```
 This command will translate all specification written in `json` to `syzkaller` format and run the syzkaller.
 The log for this process is `spec-eval/debug/merged.log`.

@@ -1,5 +1,6 @@
 import argparse
 import filecmp
+import os
 import secrets
 import shutil
 import subprocess
@@ -127,7 +128,7 @@ def populate_rundir(wkd: Path, run):
     run["run_syz"] = run_syz
 
 
-def prepare_run(wkd: Path, run, jobs):
+def prepare_run(wkd: Path, run, jobs, full_build=True):
     run_dir = run["run_dir"]
 
     logger.info(f"Preparing: {run_dir}")
@@ -160,6 +161,8 @@ def prepare_run(wkd: Path, run, jobs):
 
     logger.info(f"Building syzkaller with new specs: {run_syz}")
     prepare_linux(wkd, name="linux_for_const")
+    extract_env = os.environ.copy()
+    extract_env["CI"] = "1"
     r = subprocess.run(
         [
             "tools/syz-env",
@@ -171,18 +174,56 @@ def prepare_run(wkd: Path, run, jobs):
             str(jobs),
         ],
         cwd=run_syz,
+        env=extract_env,
     )
     check_return(r.returncode, f"extract constatns for {run_syz}")
 
-    # There is some issue for mockery
-    # https://github.com/google/syzkaller/issues/4746
-    # Thus, we will not use `tools/syz-env`, which will fail
-    # r = subprocess.run(["tools/syz-env", "make", "generate"], cwd=run_syz)
-    r = subprocess.run(["make", "generate"], cwd=run_syz)
-    check_return(r.returncode, f"generate Go files for {run_syz}")
+    # Only regenerate syscall descriptions needed by the current specs.
+    # Avoid `make generate` because it also runs formatting and extra go:generate
+    # steps that may require additional host tools/network access.
+    r = subprocess.run(["make", "descriptions"], cwd=run_syz)
+    check_return(r.returncode, f"generate descriptions for {run_syz}")
 
-    r = subprocess.run(["make", "-j", str(jobs)], cwd=run_syz)
-    check_return(r.returncode, f"build syzkaller: {run_syz}")
+    if full_build:
+        # Low-memory build profile for developer machines.
+        # Build only the binaries required by syz-manager runtime,
+        # in syz-env for guest compatibility, and force low Go
+        # package parallelism to avoid OOM kills.
+        build_env = os.environ.copy()
+        goflags = build_env.get("GOFLAGS", "").strip()
+        if "-p=" not in goflags:
+            build_env["GOFLAGS"] = (goflags + " -p=1").strip()
+        build_env["CI"] = "1"
+
+        build_cmds = [
+            ["tools/syz-env", "make", "manager", "-j", "1"],
+            [
+                "tools/syz-env",
+                "make",
+                "fuzzer",
+                "execprog",
+                "TARGETOS=linux",
+                "TARGETARCH=amd64",
+                "-j",
+                "1",
+            ],
+            [
+                "tools/syz-env",
+                "make",
+                "executor",
+                "TARGETOS=linux",
+                "TARGETARCH=amd64",
+                "-j",
+                "1",
+            ],
+        ]
+        for cmd in build_cmds:
+            r = subprocess.run(cmd, cwd=run_syz, env=build_env)
+            check_return(r.returncode, f"build syzkaller ({' '.join(cmd)})")
+    else:
+        logger.info(
+            "Skip full syzkaller build because --skip-run is enabled"
+        )
 
 
 def prepare_template_config(wkd: Path, run, custom_template):
@@ -274,7 +315,7 @@ def main():
         "--jobs",
         type=int,
         required=False,
-        default=64,
+        default=8,
         help="same as make -j (for compilation only)",
     )
     parser.add_argument(
@@ -337,7 +378,7 @@ def main():
         logger.warning("Skip preparing Syzkaller...")
     else:
         for run in config["runs"]:
-            prepare_run(wkd, run, args.jobs)
+            prepare_run(wkd, run, args.jobs, full_build=not args.skip_run)
 
     if len(args.use_shared_linux_with_config) != 0:
         config_path = Path(args.use_shared_linux_with_config).resolve()

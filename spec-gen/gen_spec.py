@@ -35,7 +35,7 @@ from gen_utils import (
     update_spec_dict,
     update_types,
 )
-from llm_utils import query_gpt4
+from llm_utils import query_llm
 from loguru import logger
 from output_spec import initialize_spec_dict, is_primitive_type, output_spec
 from ret_types import RetTypes
@@ -48,9 +48,15 @@ INCURRED_OPS = set()
 OUTPUT_DIR = Path("spec-output")
 
 
+def _parse_ret_type_from_exception(e: Exception) -> RetTypes:
+    if len(e.args) > 1 and isinstance(e.args[1], RetTypes):
+        return e.args[1]
+    return RetTypes.LLM_ERROR
+
+
 def gen_answer(prompt: str, prompt_path: Path, answer_path: Path):
     prompt_path.write_text(prompt)
-    answer = query_gpt4(prompt)
+    answer = query_llm(prompt)
     if answer is None:
         logger.error(f"[{prompt_path}] Step 1 failed")
         return
@@ -79,7 +85,7 @@ def gen_init(file_path: Path, ops_code, ops_name, prompt_output_path, ops_type):
             ops_type,
         )
         open_prompt_path.write_text(open_prompt)
-        open_answer = query_gpt4(open_prompt)
+        open_answer = query_llm(open_prompt)
         open_output_path.write_text(open_answer)
     else:
         open_answer = open_output_path.read_text()
@@ -181,7 +187,7 @@ def gen_sockaddr(file_path, bind_name, bind_code):
     else:
         prompt = gen_sockaddr_prompt(file_path, bind_code)
         prompt_path.write_text(prompt)
-        answer = query_gpt4(prompt)
+        answer = query_llm(prompt)
         if answer is None:
             logger.error(f"[{file_path}] Step 0 failed")
             return
@@ -355,7 +361,7 @@ def gen_ioctl(
                 "ioctls": {
                     cmd_name: new_cmd_data,
                 },
-                "types": answer_dict["types"],
+                "types": answer_dict.get("types", {}),
             }
             ioctl_spec.add_ioctls(json.dumps(processed_dict))
 
@@ -570,7 +576,7 @@ def gen_spec_recursive(
                 key_name: {
                     cmd_name: answer_dict[cmd_name],
                 },
-                "types": answer_dict["types"],
+                "types": answer_dict.get("types", {}),
             }
             update_spec_dict(spec, json.dumps(processed_dict))
         # Step3: Infer the type.
@@ -611,7 +617,7 @@ def gen_socket_spec(ops_name, ops_path, ops_code):
             OpsType.SOCKET,
         )
     except ValueError as e:
-        ret_type: RetTypes = e.args[1]
+        ret_type = _parse_ret_type_from_exception(e)
         statistics["result"] = f"Open Failed, {ret_type.name}"
         return statistics
 
@@ -760,7 +766,7 @@ def gen_driver_spec(ops_name, ops_path, ops_code, output_dir_name="drivers"):
             OpsType.DRIVER,
         )
     except ValueError as e:
-        ret_type: RetTypes = e.args[1]
+        ret_type = _parse_ret_type_from_exception(e)
         statistics["result"] = f"Open Failed, {ret_type.name}"
         return statistics
 

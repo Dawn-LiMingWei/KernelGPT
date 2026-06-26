@@ -4,7 +4,7 @@ from pathlib import Path
 from loguru import logger
 from collections import defaultdict
 from find_utils import find_type
-from llm_utils import query_gpt4
+from llm_utils import query_llm
 from output_spec import SYSCALL_SPEC_KEY, INIT_SYSCALL_KEY
 
 REPAIR_TEMPLATE_PATH = (
@@ -127,7 +127,7 @@ def gen_repair(
         .replace("SOURCE_PLACEHOLDER", source)
     )
     (output_path / f"{name}-{idx}.txt").write_text(repair_prompt)
-    answer = query_gpt4(repair_prompt)
+    answer = query_llm(repair_prompt)
     if answer is None:
         logger.error(f"[{name}] Repair failed")
         return

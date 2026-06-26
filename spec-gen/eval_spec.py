@@ -1,6 +1,7 @@
 import json
 import re
 import subprocess as sp
+import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -184,7 +185,7 @@ def run_eval(
     """
     logger.info(f"Running {name}")
     run_commands = [
-        "python3",
+        sys.executable,
         "run-specs.py",
         "-d",
         name,

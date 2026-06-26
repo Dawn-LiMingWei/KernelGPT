@@ -1,0 +1,11 @@
+# Build artifacts (ELF binaries / object files)
+analyze
+usage
+helper.o
+
+# Generated analysis data
+*.jsonl
+handler_names.txt
+handler_names_filtered.txt
+ioctl_names.txt
+ioctl_names_filtered.txt
